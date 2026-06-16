@@ -1,84 +1,45 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-    filters
-)
+import telebot
+import requests
 
-BOT_TOKEN = "8765370367:AAFdTWiXZgyXFrZ76WOUGJ5Htteskl4kWf8"
+TOKEN = "8874804432:AAFV_kKsEzX1xL6VQXfRlRDl3y93noRtxH4"
+bot = telebot.TeleBot(TOKEN)
+import telebot
+import requests
 
-ADMIN_ID = 7490075648   # sizning Telegram ID
+TOKEN = "8874804432:AAFV_kKsEzX1xL6VQXfRlRDl3y93noRtxH4"
+bot = telebot.TeleBot(TOKEN)
 
+weather_codes = {
+    0: "☀️ Quyoshli",
+    1: "🌤 Qisman bulutli",
+    2: "⛅ Bulutli",
+    3: "☁️ Juda bulutli",
+    61: "🌧 Yomg'irli",
+    63: "🌧 Kuchli yomg'ir",
+    71: "❄️ Qor",
+    95: "⛈ Momaqaldiroq"
+}
 
-# /id (test uchun)
-async def getid(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"ID: {update.message.chat_id}")
+@bot.message_handler(commands=['obhavo'])
+def weather(message):
+    url = ("https://api.open-meteo.com/v1/forecast?"
+           "latitude=42.95&longitude=59.82"
+           "&current_weather=true")
 
+    data = requests.get(url).json()
 
-# /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("✉️ Admin ga xabar qoldirish", callback_data="support")]
-    ]
+    temp = data["current_weather"]["temperature"]
+    code = data["current_weather"]["weathercode"]
 
-    await update.message.reply_text(
-        "👋 Xush kelibsiz!\n\nAgar admin javob bermasa, xabar qoldirishingiz mumkin.",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    holat = weather_codes.get(code, "🌍 Noma'lum")
 
+    text = f"""
+📍 Chimboy
 
-# button bosilganda
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    if query.data == "support":
-        context.user_data["waiting_message"] = True
-
-        await query.message.reply_text(
-            "✍️ Xabaringizni yozing va yuboring."
-        )
-
-
-# text kelganda
-async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    if context.user_data.get("waiting_message"):
-
-        user = update.message.from_user
-        message = update.message.text
-
-        text = f"""
-📩 Yangi xabar
-
-👤 Ism: {user.first_name}
-🆔 ID: {user.id}
-💬 Username: @{user.username}
-
-✉️ Xabar:
-{message}
+🌡 Harorat: {temp}°C
+🌤 Holat: {holat}
 """
 
-        await context.bot.send_message(
-            chat_id=ADMIN_ID,
-            text=text
-        )
+    bot.send_message(message.chat.id, text)
 
-        context.user_data["waiting_message"] = False
-
-        await update.message.reply_text("✅ Xabaringiz yuborildi!")
-
-
-# bot
-app = ApplicationBuilder().token(BOT_TOKEN).build()
-
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("id", getid))
-app.add_handler(CallbackQueryHandler(button_handler))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
-
-print("Bot ishladi...")
-app.run_polling()
+bot.infinity_polling()
